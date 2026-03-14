@@ -1,14 +1,14 @@
 name: Build
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,7 +26,16 @@ jobs:
           GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/sfh_windows_amd64.exe .
           GOOS=windows GOARCH=arm64 go build -ldflags="-s -w" -o dist/sfh_windows_arm64.exe .
 
+      - name: Tag
+        id: tag
+        run: |
+          TAG="build-$(date -u +'%Y%m%d-%H%M%S')"
+          git tag $TAG
+          git push origin $TAG
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
           files: dist/*
