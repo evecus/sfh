@@ -639,13 +639,14 @@ const dirTmpl = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{.Path}} — sfh</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232563eb'/%3E%3Ctext x='16' y='22' font-family='monospace' font-weight='700' font-size='14' fill='white' text-anchor='middle'%3Esfh%3C/text%3E%3C/svg%3E">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f8f9fb;--surf:#ffffff;--bdr:#e5e8ef;--bdr2:#d1d5de;
   --acc:#2563eb;--grn:#059669;--txt:#111827;--sub:#6b7280;
-  --hvr:#f1f4f9;--red:#dc2626;
+  --hvr:#f1f4f9;
 }
 body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;min-height:100vh;font-size:14px}
 header{
@@ -659,13 +660,6 @@ header{
 .bc a{color:var(--acc);text-decoration:none;padding:3px 6px;border-radius:4px;transition:.12s;white-space:nowrap}
 .bc a:hover{background:var(--hvr);color:var(--grn)}
 .bc .s{color:var(--bdr2);padding:0 1px}
-.mgr{
-  font-size:.75rem;font-family:'JetBrains Mono',monospace;
-  border:1px solid var(--bdr2);color:var(--sub);
-  padding:4px 11px;border-radius:5px;text-decoration:none;transition:.15s;
-  white-space:nowrap;flex-shrink:0;
-}
-.mgr:hover{border-color:var(--acc);color:var(--acc)}
 main{max-width:860px;margin:32px auto;padding:0 20px}
 .toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .info{font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--sub)}
@@ -701,7 +695,6 @@ a.nm.dir:hover{color:var(--grn)}
   <div class="bc">
     {{range $i,$c:=.Crumbs}}{{if $i}}<span class="s">/</span>{{end}}<a href="{{$c.URL}}">{{$c.Name}}</a>{{end}}
   </div>
-  <a class="mgr" href="/update{{.Path}}">⚙ manage</a>
 </header>
 <main>
   <div class="toolbar">
@@ -740,13 +733,14 @@ const updTmpl = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>manage {{.Path}} — sfh</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232563eb'/%3E%3Ctext x='16' y='22' font-family='monospace' font-weight='700' font-size='14' fill='white' text-anchor='middle'%3Esfh%3C/text%3E%3C/svg%3E">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0c0f14;--surf:#131720;--s2:#181d28;--bdr:#1f2638;
-  --acc:#3b82f6;--grn:#10b981;--txt:#e2e8f0;--sub:#64748b;
-  --hvr:#161c29;--red:#ef4444;
+  --bg:#f8f9fb;--surf:#ffffff;--s2:#f3f5f8;--bdr:#e5e8ef;--bdr2:#d1d5de;
+  --acc:#2563eb;--grn:#059669;--txt:#111827;--sub:#6b7280;
+  --hvr:#f1f4f9;--red:#dc2626;
 }
 body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;min-height:100vh;font-size:14px}
 header{
@@ -756,12 +750,12 @@ header{
 }
 .logo{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.95rem;color:var(--acc)}
 .logo em{color:var(--grn);font-style:normal}
-.badge{font-size:.62rem;font-family:'JetBrains Mono',monospace;border:1px solid var(--acc);color:var(--acc);padding:2px 7px;border-radius:20px;opacity:.55}
+.badge{font-size:.62rem;font-family:'JetBrains Mono',monospace;border:1px solid var(--acc);color:var(--acc);padding:2px 7px;border-radius:20px;opacity:.7}
 .bc{flex:1;display:flex;align-items:center;gap:2px;font-family:'JetBrains Mono',monospace;font-size:.78rem;margin-left:4px;min-width:0;overflow:hidden}
 .bc a{color:var(--acc);text-decoration:none;padding:3px 6px;border-radius:4px;transition:.12s;white-space:nowrap}
 .bc a:hover{background:var(--hvr);color:var(--grn)}
-.bc .s{color:var(--bdr);padding:0 1px}
-.vw{font-size:.75rem;font-family:'JetBrains Mono',monospace;border:1px solid var(--bdr);color:var(--sub);padding:4px 11px;border-radius:5px;text-decoration:none;transition:.15s;white-space:nowrap;flex-shrink:0}
+.bc .s{color:var(--bdr2);padding:0 1px}
+.vw{font-size:.75rem;font-family:'JetBrains Mono',monospace;border:1px solid var(--bdr2);color:var(--sub);padding:4px 11px;border-radius:5px;text-decoration:none;transition:.15s;white-space:nowrap;flex-shrink:0}
 .vw:hover{border-color:var(--grn);color:var(--grn)}
 .wrap{display:flex;gap:20px;max-width:1160px;margin:24px auto;padding:0 20px}
 .side{width:248px;flex-shrink:0}
@@ -769,11 +763,11 @@ header{
 .card{background:var(--surf);border:1px solid var(--bdr);border-radius:8px;padding:16px;margin-bottom:16px}
 .card h3{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--sub);font-family:'JetBrains Mono',monospace;margin-bottom:12px;font-weight:500}
 .dz{
-  border:2px dashed var(--bdr);border-radius:6px;padding:20px 10px;
+  border:2px dashed var(--bdr2);border-radius:6px;padding:20px 10px;
   text-align:center;cursor:pointer;color:var(--sub);font-size:.8rem;
   transition:.15s;position:relative;user-select:none;
 }
-.dz:hover,.dz.ov{border-color:var(--acc);color:var(--acc);background:rgba(59,130,246,.04)}
+.dz:hover,.dz.ov{border-color:var(--acc);color:var(--acc);background:rgba(37,99,235,.04)}
 .dz .ic{font-size:1.6rem;display:block;margin-bottom:4px}
 .dz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 input[type=text]{
@@ -783,10 +777,10 @@ input[type=text]{
 }
 input[type=text]:focus{border-color:var(--acc)}
 .btn{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:5px;font-size:.76rem;font-family:'JetBrains Mono',monospace;cursor:pointer;border:none;transition:.15s;font-weight:500;text-decoration:none}
-.bp{background:var(--acc);color:#fff}.bp:hover{opacity:.82}
-.bg{background:var(--grn);color:#0a0f14}.bg:hover{opacity:.82}
-.bgh{background:transparent;border:1px solid var(--bdr);color:var(--sub)}.bgh:hover{border-color:var(--acc);color:var(--acc)}
-.br{background:transparent;border:1px solid var(--bdr);color:var(--red)}.br:hover{background:rgba(239,68,68,.08)}
+.bp{background:var(--acc);color:#fff}.bp:hover{opacity:.85}
+.bg{background:var(--grn);color:#fff}.bg:hover{opacity:.85}
+.bgh{background:transparent;border:1px solid var(--bdr2);color:var(--sub)}.bgh:hover{border-color:var(--acc);color:var(--acc)}
+.br{background:transparent;border:1px solid var(--bdr2);color:var(--red)}.br:hover{background:rgba(220,38,38,.06)}
 .row{display:flex;gap:7px;margin-top:10px}
 .prog{height:2px;background:var(--bdr);border-radius:1px;margin-top:7px;display:none;overflow:hidden}
 .prog .fill{height:100%;background:var(--grn);transition:width .2s;width:0}
@@ -799,7 +793,7 @@ tr:hover td{background:var(--hvr)}
 .fn{display:flex;align-items:center;gap:7px}
 a.nl{color:var(--acc);text-decoration:none;font-size:.86rem;transition:.12s}
 a.nl:hover{color:var(--grn)}
-.fname{font-size:.86rem}
+.fname{font-size:.86rem;color:var(--txt)}
 .sc,.sm{color:var(--sub);font-family:'JetBrains Mono',monospace;font-size:.72rem}
 .acts{display:flex;gap:4px;justify-content:flex-end}
 .rf{display:none;align-items:center;gap:5px}
