@@ -22,6 +22,12 @@ var (
 	port     = "4040"
 )
 
+const (
+	maxUploadSize  = 10 << 30  // 10 GB total per request
+	maxCatSize     = 10 << 20  // 10 MB for /api/cat
+	maxZipWalkSize = 20 << 30  // 20 GB total for zip download
+)
+
 func parseArgs() {
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -45,16 +51,21 @@ func parseArgs() {
 	}
 }
 
-func checkAuth(r *http.Request) bool {
+// checkAuth validates Basic Auth credentials.
+// If no --auth flag was provided, write operations are always denied.
+// Pass requireCreds=false only for public read endpoints.
+func checkAuth(r *http.Request, requireCreds bool) bool {
 	if authUser == "" && authPass == "" {
-		return true
+		// No credentials configured: allow only if the caller explicitly
+		// marks the endpoint as public (requireCreds == false).
+		return !requireCreds
 	}
 	u, p, ok := r.BasicAuth()
 	return ok && u == authUser && p == authPass
 }
 
 func requireAuth(w http.ResponseWriter, r *http.Request) bool {
-	if checkAuth(r) {
+	if checkAuth(r, true) {
 		return true
 	}
 	w.Header().Set("WWW-Authenticate", `Basic realm="sfh"`)
@@ -276,7 +287,11 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func updatePost(w http.ResponseWriter, r *http.Request, dir, absDir string) {
-	r.ParseMultipartForm(256 << 20)
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		http.Error(w, "request too large or malformed", 400)
+		return
+	}
 	action := r.FormValue("action")
 
 	switch action {
@@ -284,9 +299,13 @@ func updatePost(w http.ResponseWriter, r *http.Request, dir, absDir string) {
 		if r.MultipartForm != nil {
 			for _, fhs := range r.MultipartForm.File {
 				for _, fh := range fhs {
-					dst := filepath.Join(absDir, filepath.Base(fh.Filename))
-					src, _ := fh.Open()
-					if src == nil {
+					safeName := filepath.Base(fh.Filename)
+					dst, ok := safePath(filepath.Join(dir, safeName))
+					if !ok {
+						continue
+					}
+					src, err := fh.Open()
+					if err != nil {
 						continue
 					}
 					f, err := os.Create(dst)
@@ -301,8 +320,17 @@ func updatePost(w http.ResponseWriter, r *http.Request, dir, absDir string) {
 	case "upload_folder":
 		if r.MultipartForm != nil {
 			for _, fhs := range r.MultipartForm.File["files"] {
-				dst := filepath.Join(absDir, filepath.FromSlash(fhs.Filename))
-				os.MkdirAll(filepath.Dir(dst), 0755)
+				// Sanitise the relative path supplied by the client.
+				// filepath.FromSlash + Clean turns any "../.." into a
+				// safe relative path, then safePath enforces the root boundary.
+				relName := filepath.FromSlash(filepath.Clean("/" + fhs.Filename))
+				dst, ok := safePath(filepath.Join(dir, relName))
+				if !ok {
+					continue // silently skip path-traversal attempts
+				}
+				if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+					continue
+				}
 				src, err := fhs.Open()
 				if err != nil {
 					continue
@@ -451,6 +479,15 @@ func apiCat(w http.ResponseWriter, r *http.Request) {
 		jErr(w, "invalid path", 400)
 		return
 	}
+	info, err := os.Stat(abs)
+	if err != nil {
+		jErr(w, err.Error(), 500)
+		return
+	}
+	if info.Size() > maxCatSize {
+		jErr(w, fmt.Sprintf("file too large for cat (max %s)", fmtSize(maxCatSize)), 400)
+		return
+	}
 	b, err := os.ReadFile(abs)
 	if err != nil {
 		jErr(w, err.Error(), 500)
@@ -467,22 +504,34 @@ func apiUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	os.MkdirAll(absDir, 0755)
+
+	// Enforce a hard ceiling on the entire request body.
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+
 	ct := r.Header.Get("Content-Type")
 	if strings.HasPrefix(ct, "multipart/") {
-		r.ParseMultipartForm(256 << 20)
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			jErr(w, "request too large or malformed", 400)
+			return
+		}
 		var up []string
 		for _, fhs := range r.MultipartForm.File {
 			for _, fh := range fhs {
-				dst := filepath.Join(absDir, filepath.Base(fh.Filename))
-				src, _ := fh.Open()
-				if src == nil {
+				// Only use the base name — no subdirectory component.
+				safeName := filepath.Base(fh.Filename)
+				dst, ok2 := safePath(filepath.Join(dir, safeName))
+				if !ok2 {
+					continue
+				}
+				src, err := fh.Open()
+				if err != nil {
 					continue
 				}
 				f, err := os.Create(dst)
 				if err == nil {
 					io.Copy(f, src)
 					f.Close()
-					up = append(up, fh.Filename)
+					up = append(up, safeName)
 				}
 				src.Close()
 			}
@@ -490,11 +539,17 @@ func apiUpload(w http.ResponseWriter, r *http.Request) {
 		jOK(w, map[string]any{"uploaded": up})
 		return
 	}
-	name := r.URL.Query().Get("name")
-	if name == "" {
+	// Raw-body upload: validate the supplied name through safePath.
+	name := filepath.Base(r.URL.Query().Get("name"))
+	if name == "" || name == "." {
 		name = "upload_" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	}
-	f, err := os.Create(filepath.Join(absDir, filepath.Base(name)))
+	dst, ok := safePath(filepath.Join(dir, name))
+	if !ok {
+		jErr(w, "invalid name", 400)
+		return
+	}
+	f, err := os.Create(dst)
 	if err != nil {
 		jErr(w, err.Error(), 500)
 		return
@@ -565,12 +620,20 @@ func apiDownload(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/zip")
 		zw := zip.NewWriter(w)
 		defer zw.Close()
+		var totalBytes int64
 		filepath.Walk(abs, func(path string, fi os.FileInfo, err error) error {
 			if err != nil || fi.IsDir() {
 				return nil
 			}
+			totalBytes += fi.Size()
+			if totalBytes > maxZipWalkSize {
+				return fmt.Errorf("zip size limit exceeded")
+			}
 			rel, _ := filepath.Rel(abs, path)
-			fw, _ := zw.Create(rel)
+			fw, err := zw.Create(rel)
+			if err != nil {
+				return nil
+			}
 			f, err := os.Open(path)
 			if err == nil {
 				io.Copy(fw, f)
@@ -609,6 +672,10 @@ func main() {
 	}
 	fmt.Printf("\n  sfh — Static File Host\n\n")
 	fmt.Printf("  📁 dir    %s\n  🌐 port   :%s\n  🔑 auth   %s\n\n", dataRoot, port, auth)
+	if authUser == "" {
+		fmt.Fprintf(os.Stderr, "  ⚠️  WARNING: no --auth set. /update and write API endpoints are DISABLED.\n")
+		fmt.Fprintf(os.Stderr, "              Start with --auth user:pass to enable file management.\n\n")
+	}
 	fmt.Printf("  Browse → http://localhost:%s/\n", port)
 	fmt.Printf("  Manage → http://localhost:%s/update  (needs auth)\n\n", port)
 	fmt.Printf("  curl API (read — public):\n")
